@@ -1,0 +1,696 @@
+% !Rnw weave = knitr
+\documentclass[11pt,a4paper]{article}
+% \documentclass[12pt,a4paper,titlepage]{article}
+
+\usepackage[latin1]{inputenc} %Para manejo de acentos y caracteres.
+\usepackage[spanish,mexico]{babel} % Para escribir en español
+\usepackage{babelbib} %para la bibliografía
+\usepackage[round]{natbib} %para las citas
+\usepackage{amsmath} % Para símbolos matemáticos
+\usepackage{amsfonts} % Para símbolos matemáticos
+\usepackage{amssymb} % Para símbolos matemáticos
+\usepackage[T1]{fontenc}
+\usepackage{color} %para tener más colores. 
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor} % para  tener más colores
+\usepackage{rotating} %para girar encabezados de tablas.
+\usepackage{booktabs} %para la impresión de tablas. 
+\usepackage{array} %para impresión de tablas.
+\usepackage{multirow} %para agregar multiples filas a las tablas.
+\usepackage{geometry} 
+\usepackage{graphicx} %para las gráficas
+\usepackage{subfigure}%para agregar subgráficas en cada plot.
+\usepackage{longtable} %para imprimir tablas que ocupan más de una hoja. 
+\usepackage{float}
+\usepackage{etex}
+\usepackage{pdflscape} %para hojas horizontales
+\usepackage{mathptmx}
+\reserveinserts{18}
+\usepackage{morefloats}
+\geometry{verbose,tmargin=1.5cm,bmargin=1.5cm,lmargin=1.5cm,rmargin=1.5cm} % para los márgenes de la hoja.
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{2}
+\setlength{\parskip}{\medskipamount}
+\setlength{\parindent}{0pt}
+\usepackage[pdftex,
+pdfauthor={Alejandra Lelo de Larrea Ibarra},
+pdftitle={Concurso Kaggle Examen Final},
+pdfsubject={Aprendizaje de Maquina},
+pdfkeywords={Concurso Kaggle: Examen Final},
+pdfproducer={Latex con hyperref},
+pdfcreator={pdflatex}]{hyperref}
+
+
+\newcommand{\twopartdef}[4]
+{
+\left\{
+\begin{array}{ll}
+#1 & \mbox{si } #2 \\
+#3 & \mbox{si } #4
+\end{array}
+\right.
+}
+
+\setcounter{topnumber}{2}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.85}
+\renewcommand{\textfraction}{0.15}
+\renewcommand{\floatpagefraction}{0.8}
+\renewcommand{\textfraction}{0.1}
+\setlength{\floatsep}{5pt plus 2pt minus 2pt}
+\setlength{\textfloatsep}{5pt plus 2pt minus 2pt}
+\setlength{\intextsep}{5pt plus 2pt minus 2pt}
+
+
+\title{Aprendizaje de Máquina\\Concurso Kaggle: Examen Final}
+
+\author{Alejandra Lelo de Larrea Ibarra}
+
+\date{}
+
+\begin{document}
+
+\maketitle
+
+<<librerias,echo=FALSE, message=FALSE,warning=FALSE>>=
+
+# # Se cargan las librerías a utilizar en el reporte. 
+library(xtable) # Para imprimir tablas en formato latex. 
+
+# Librerías de Aprendizaje de Maquina
+library(knitr)
+library(tidyverse) # incluye ggplot2, dplyr, purrr, readr,readxl, tidyr
+library(ISLR)
+library(data.table)
+library(kknn) # Para vecinos ms cercanos
+library(ROCR)
+library(glmnet)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(gbm)
+library(maptools)
+library(maps)
+library(ggpubr)
+
+@
+
+<<edicionTexto,echo=FALSE>>=
+digitos0 <- function(x){
+  ifelse(x<0,
+         paste("\\color{black}{", formatC(x, dig=0, format="f"), "}"),
+         paste("\\color{black}{", formatC(x, dig=0, format="f"), "}"))
+}
+
+digitos1 <- function(x){
+  ifelse(x<0,
+         paste("\\color{black}{", formatC(x, dig=1, format="f"), "}"),
+         paste("\\color{black}{", formatC(x, dig=1, format="f"), "}"))
+}
+
+digitos2 <- function(x){
+  ifelse(x<0,
+         paste("\\color{black}{", formatC(x, dig=2, format="f"), "}"),
+         paste("\\color{black}{", formatC(x, dig=2, format="f"), "}"))
+}
+
+
+digitos3 <- function(x){
+  ifelse(x<0,
+         paste("\\color{black}{", formatC(x, dig=3, format="f"), "}"),
+         paste("\\color{black}{", formatC(x, dig=3, format="f"), "}"))
+}
+
+digitos4 <- function(x){
+  ifelse(x<0,
+         paste("\\color{black}{", formatC(x, dig=4, format="f"), "}"),
+         paste("\\color{black}{", formatC(x, dig=4, format="f"), "}"))
+}
+
+
+minimo <- function(x,y){#nota: x es el vector, y es el minimo del vector.
+  ifelse(x==y,paste("\\textbf{",formatC(x, format="f"),"}"),paste(formatC(x, format="f")))
+}
+
+@
+
+<<setup, echo=FALSE>>=
+
+# setwd("E:/ITAM Maestría/Otoño 2017/Aprendizaje de Máquina/Examen FInal Concurso Kaggle")
+setwd("~/Documents/ITAM_Maestria/01_Otono_2017/Aprendizaje_de_Maquina/Examen_FInal_Concurso_Kaggle")
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Datos
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Datos}
+
+Se leen los datos de entrenamiento y prueba. La descripción de los datos es la siguiente: 
+\begin{itemize}
+\item \textbf{bano_cuarto, bano_escalera, cocina, cuarto, entrada, escalera, estudios, estudios, puerta, sala, tv, vestidor:} This columns contain motion information in different areas of the home. A number close to 1 means that a motion event has occurred recently. A lower number means the last event occurred less recently. 1/2 corresponds to an event that about a minute ago (exponential decay with a -0.01 rate (seconds).
+\item \textbf{datetime:} moment where the previous measurements took place. This variable is not contained in the test set. The training set contains data from 2015-07-15 to 2015-08-18 (about one month). The test data is from dates posterior to 2015-08-18.
+\item \textbf{consumo:} mean of power consumption (in mA) for the previous 30 seconds to datetime.
+\item \textbf{cocina_pir, sala_pir, estudiof_pir:} These are the targets. They are equal to 0 if no motion event occurred in the 10 seconds after date time, and equal to 1 otherwise.
+\end{itemize}
+
+<<Datos,cache=TRUE, tidy=TRUE>>=
+# Se leen los datos de entrenamiento
+datos_entrena<-read_csv('entrena.csv')
+
+# Se obtiene el no. de observaciones y variables
+dim(datos_entrena)
+
+# Se ven los datos
+str(datos_entrena)
+
+# Se leen los datos de prueba
+datos_prueba<-read_csv('prueba.csv')
+
+# Se obtiene el no. de observaciones y variables
+dim(datos_prueba)
+
+# Se ven los datos 
+str(datos_prueba)
+
+
+@
+
+Dado que los datos de prueba son para una fecha posterior a los datos de entrenamiento, se dividen los datos de entrenamiento en muestra de entrenamiento (incluye datos del 2015-07-15 al 2015-08-08) y muestra de validación (2015-08-09 a 2015-08-18). 
+<<Muestra_Entrena_Valid,cache=TRUE, tidy=TRUE>>=
+
+# Se busca el renglón de la fecha de corte.
+indice<-match("2015-8-9",paste(year(datos_entrena$datetime),month(datos_entrena$datetime),mday(datos_entrena$datetime),sep="-"))
+
+# Se dividen en entrenaiento y validación
+entrena<-datos_entrena[1:(indice-1),]
+dim(entrena)
+# El método de boosting puede utilizar un porcentaje de la muestra como entrenamiento y el resto como validación. 
+# Según la documentación, las primeras train.fraction*nrows(data) observaciones serán usadas para hacer el fit 
+# del modelo gbm y el resto para para calcular la salida. 
+# Calculamos el porcentaje que representa entrena de datos_entrena
+p_entrena<-nrow(entrena)/nrow(datos_entrena)
+p_entrena
+
+valida<-datos_entrena[indice:nrow(datos_entrena),]
+dim(valida)
+
+# Se elimina la variable datetime pues no se tiene en los datos de prueba
+entrena<-entrena%>%select(-datetime)
+valida<-valida%>%select(-datetime)
+@
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Primer Intento
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Primer Intento: Gradient Boosting de árboles}
+
+<<FuncionGBM,cache=TRUE, tidy=TRUE>>=
+# Creamos la función que ajusta el boosting de árboles
+# Nota var_Dep será igual a cocina_pir, sala_pir o estudiof_pir
+#      var_Indep son las variables bano_cuarto, bano_escalera, cocina, 
+#      cuarto, entrada, escalera, estudios, estudios, puerta, sala, tv,
+#      vestidor y consumo.
+
+
+ajustar_boosting<-function(data.frame,n_arboles=100,interaccion=3,tasa_ap=0.1,bag_frac=1){
+  
+  mod_boosting<-gbm(var_Dep~.,
+                    data=data.frame,
+                    distribution='bernoulli', # Reg. logística
+                    n.trees=n_arboles, #no. arboles
+                    interaction.depth =interaccion, #Grado de interacción variables
+                    shrinkage=tasa_ap, # Tasa de aprendizaje
+                    bag.fraction=bag_frac, # Usa el 100% de datos de entrenamiento
+                    train.fraction = p_entrena, # Procentaje para entrenamiento
+                    keep.data=TRUE,
+                    verbose=TRUE)
+  
+  mod_boosting
+  
+  
+}
+
+@
+
+Como primer intento, se ajustan tres modelos (uno para cada variable dependiente) con 100 árboles, nivel de interacciones 3, tasa de aprendizaje 0.1. 
+<<GBM1_fit,cache=TRUE, tidy=TRUE>>=
+# Se obtiene la funcion gbm para el modelo de cocina
+datos_entrena_cocina<-datos_entrena%>%select(-c(datetime,sala_pir,estudiof_pir))
+colnames(datos_entrena_cocina)[ncol(datos_entrena_cocina)]<-"var_Dep"
+
+gbm1_cocina<-ajustar_boosting(datos_entrena_cocina)
+
+# Se grafica el desempeño del modelo
+gbm.perf(gbm1_cocina)
+
+# Se obtiene la funcion gbm para el modelo de sala
+datos_entrena_sala<-datos_entrena%>%select(-c(datetime,cocina_pir,estudiof_pir))
+colnames(datos_entrena_sala)[ncol(datos_entrena_sala)]<-"var_Dep"
+
+gbm1_sala<-ajustar_boosting(datos_entrena_sala)
+
+# Se grafica el desempeño del modelo
+gbm.perf(gbm1_sala)
+
+# Se obtiene la funcion gbm para el modelo de estudiof
+datos_entrena_estudiof<-datos_entrena%>%select(-c(datetime,cocina_pir,sala_pir))
+colnames(datos_entrena_estudiof)[ncol(datos_entrena_estudiof)]<-"var_Dep"
+
+gbm1_estudiof<-ajustar_boosting(datos_entrena_estudiof)
+
+# Se grafica el desempeño del modelo
+gbm.perf(gbm1_estudiof)
+
+@
+
+
+Posteriormente se calcula la medida AUC.
+<<GBM1_AUC,cache=TRUE, tidy=TRUE>>=
+#%%%%%%%%%%%%%%%%%%%%%% Probabilidades %%%%%%%%%%%%%%%%%%%%%%
+
+# Se obtienen las probabilidades para sala
+probs_cocina<-predict.gbm(gbm1_cocina,newdata=datos_entrena_cocina,n.trees=100,type='response')
+probs_cocina_entrena<-probs_cocina[1:(indice-1)]
+probs_cocina_valida<-probs_cocina[indice:length(probs_cocina)]
+
+# Se obtienen las probabilidades para sala 
+probs_sala<-predict.gbm(gbm1_sala,newdata=datos_entrena_sala,n.trees=100,type='response')
+probs_sala_entrena<-probs_sala[1:(indice-1)]
+probs_sala_valida<-probs_sala[indice:length(probs_sala)]
+
+# Se obtienen las probabilidades para estudiof
+probs_estudiof<-predict.gbm(gbm1_estudiof,newdata=datos_entrena_estudiof,n.trees=100,type='response')
+probs_estudiof_entrena<-probs_estudiof[1:(indice-1)]
+probs_estudiof_valida<-probs_estudiof[indice:length(probs_estudiof)]
+
+#%%%%%%%%%%%%%%%%%%%%%% AUC Entrena  %%%%%%%%%%%%%%%%%%%%%%
+# Se calcula el AUC para el modelo de cocina. 
+pred_entrena_cocina<-prediction(probs_cocina_entrena,entrena$cocina_pir)
+AUC1_entrena_cocina<-performance(pred_entrena_cocina,measure='auc')@y.values
+AUC1_entrena_cocina
+
+# Se calcula el AUC para el modelo de sala. 
+pred_entrena_sala<-prediction(probs_sala_entrena,entrena$sala_pir)
+AUC1_entrena_sala<-performance(pred_entrena_sala,measure='auc')@y.values
+AUC1_entrena_sala
+
+# Se calcula el AUC para el modelo de estudiof. 
+pred_entrena_estudiof<-prediction(probs_estudiof_entrena,entrena$estudiof_pir)
+AUC1_entrena_estudiof<-performance(pred_entrena_estudiof,measure='auc')@y.values
+AUC1_entrena_estudiof
+
+# Evaluación del modelo 
+AUC1_entrena<-mean(c(as.numeric(AUC1_entrena_cocina),as.numeric(AUC1_entrena_sala),as.numeric(AUC1_entrena_estudiof)))
+AUC1_entrena
+
+#%%%%%%%%%%%%%%%%%%%%%% AUC Entrena  %%%%%%%%%%%%%%%%%%%%%%
+# Se calcula el AUC para el modelo de cocina. 
+pred_valida_cocina<-prediction(probs_cocina_valida,valida$cocina_pir)
+AUC1_valida_cocina<-performance(pred_valida_cocina,measure='auc')@y.values
+AUC1_valida_cocina
+
+# Se calcula el AUC para el modelo de sala. 
+pred_valida_sala<-prediction(probs_sala_valida,valida$sala_pir)
+AUC1_valida_sala<-performance(pred_valida_sala,measure='auc')@y.values
+AUC1_valida_sala
+
+# Se calcula el AUC para el modelo de estudiof. 
+pred_valida_estudiof<-prediction(probs_estudiof_valida,valida$estudiof_pir)
+AUC1_valida_estudiof<-performance(pred_valida_estudiof,measure='auc')@y.values
+AUC1_valida_estudiof
+
+AUC1_valida<-mean(c(as.numeric(AUC1_valida_cocina), as.numeric(AUC1_valida_sala), as.numeric(AUC1_valida_estudiof)))
+AUC1_valida
+
+@
+
+Se obtienen las predicciones del modelo para la muestra de prueba. 
+<<PredsPrueba_GBM1,cache=TRUE, tidy=TRUE>>=
+
+# Se obtienen las probabilidades para cocina
+probs_cocina_prueba<-predict.gbm(gbm1_cocina,newdata=datos_prueba%>%select(-id),n.trees=100,type='response')
+
+# Se obtienen las probabilidades para sala
+probs_sala_prueba<-predict.gbm(gbm1_sala,newdata=datos_prueba%>%select(-id),n.trees=100,type='response')
+
+# Se obtienen las probabilidades para estudiof
+probs_estudiof_prueba<-predict.gbm(gbm1_estudiof,newdata=datos_prueba%>%select(-id),n.trees=100,type='response')
+
+preds_prueba_mod1<-data.frame(id=1:nrow(datos_prueba),cocina_pir=probs_cocina_prueba,sala_pir=probs_sala_prueba,estudiof_pir=probs_estudiof_prueba)
+rownames(preds_prueba_mod1)<-NULL
+
+write.csv(preds_prueba_mod1,"preds_prueba_mod1.csv",row.names=FALSE)
+@
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Calibración Hiperparámetros
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Calibración Hiperparámetros}
+
+<<Hiperparams,cache=TRUE, tidy=TRUE>>=
+
+#Función gbm
+ajustar_boosting2<-function(data.frame){
+  
+  out_fun<-function(n.trees=100,interaction.depth=3,shrinkage=0.1,bag.fraction=1,...){
+    
+    mod_boosting<-gbm(var_Dep~.,
+                    data=data.frame,
+                    distribution='bernoulli', # Reg. logística
+                    n.trees=n.trees, #no. arboles
+                    interaction.depth =interaction.depth, #Grado de interacción variables
+                    shrinkage=shrinkage, # Tasa de aprendizaje
+                    bag.fraction=bag.fraction, # Usa el 100% de datos de entrenamiento
+                    train.fraction = p_entrena, # Procentaje para entrenamiento
+                    keep.data=TRUE)
+    mod_boosting
+  }
+  
+  out_fun
+  
+}
+
+
+
+Eval_entrena_mod<-function(data.frame){
+  
+  fun_eval<-function(gbm_ajust){
+    # Se divide en entrenamiento y validación.
+    data.entrena<-data.frame[1:(indice-1),]%>%select(-var_Dep)
+    
+    # Se obtienen las probabilidades (total, entrena y validación)
+    probs<-predict.gbm(gbm_ajust,newdata=data.frame%>%select(-var_Dep),n.trees=100,type='response')
+    probs_entrena<-probs[1:(indice-1)]
+    
+    # AUC entrenamiento
+    pred_entrena<-prediction(probs_entrena,data.frame$var_Dep[1:(indice-1)])
+    
+    AUC_entrena<-performance(pred_entrena,measure='auc')@y.values
+    
+    AUC_entrena
+    
+  }
+}
+
+Eval_valida_mod<-function(data.frame){
+  
+  fun_eval<-function(gbm_ajust){
+    # Se divide en entrenamiento y validación.
+    data.valida<-data.frame[indice:nrow(data.frame),]%>%select(-var_Dep)
+    
+    # Se obtienen las probabilidades (total, entrena y validación)
+    probs<-predict.gbm(gbm_ajust,newdata=data.frame%>%select(-var_Dep),n.trees=100,type='response')
+    probs_valida<-probs[indice:length(probs)]
+    
+    # AUC valida
+    pred_valida<-prediction(probs_valida,data.frame$var_Dep[indice:length(data.frame$var_Dep)])
+
+    AUC_valida<-performance(pred_valida,measure='auc')@y.values
+    
+    AUC_valida
+  }
+}
+
+params<-list(n.trees=c(100,200,500,1000),
+                  interaction.depth=c(1,2,3),
+                  shrinkage=c(0.001,0.05,0.01,0.1),
+                  bag.fraction=c(0.25,0.5,0.75,1))%>%expand.grid
+
+
+# %%%%%%%%%%%%%%%%%%%%%% Calibración hiperparámetros modelo cocina %%%%%%%%%%%%%%%%%%%%%%
+
+gbm.cocina.hiper<-ajustar_boosting2(datos_entrena_cocina)
+Eval_entrena_mod_cocina<-Eval_entrena_mod(datos_entrena_cocina)
+Eval_valida_mod_cocina<-Eval_valida_mod(datos_entrena_cocina)
+
+modelos_cocina<-params%>%
+  mutate(modelo=pmap(.,gbm.cocina.hiper))%>%
+  mutate(AUC_entrena=unlist(lapply(modelo,Eval_entrena_mod_cocina)))%>%
+  mutate(AUC_valida=unlist(lapply(modelo,Eval_valida_mod_cocina)))
+
+modelos_cocina<-modelos_cocina%>%select(n.trees,interaction.depth,shrinkage,bag.fraction,AUC_entrena,AUC_valida)%>%arrange(desc(AUC_valida))
+modelos_cocina
+
+
+# %%%%%%%%%%%%%%%%%%%%%% Calibración hiperparámetros modelo sala %%%%%%%%%%%%%%%%%%%%%%
+gbm.sala.hiper<-ajustar_boosting2(datos_entrena_sala)
+Eval_entrena_mod_sala<-Eval_entrena_mod(datos_entrena_sala)
+Eval_valida_mod_sala<-Eval_valida_mod(datos_entrena_sala)
+
+modelos_sala<-params%>%
+  mutate(modelo=pmap(.,gbm.sala.hiper))%>%
+  mutate(AUC_entrena=unlist(lapply(modelo,Eval_entrena_mod_sala)))%>%
+  mutate(AUC_valida=unlist(lapply(modelo,Eval_valida_mod_sala)))
+
+modelos_sala<-modelos_sala%>%select(n.trees,interaction.depth,shrinkage,bag.fraction,AUC_entrena,AUC_valida)%>%arrange(desc(AUC_valida))
+modelos_sala
+
+# %%%%%%%%%%%%%%%%%%%%%% Calibración hiperparámetros modelo esudiof %%%%%%%%%%%%%%%%%%%%%%
+gbm.estudiof.hiper<-ajustar_boosting2(datos_entrena_estudiof)
+Eval_entrena_mod_estudiof<-Eval_entrena_mod(datos_entrena_estudiof)
+Eval_valida_mod_estudiof<-Eval_valida_mod(datos_entrena_estudiof)
+
+modelos_estudiof<-params%>%
+  mutate(modelo=pmap(.,gbm.estudiof.hiper))%>%
+  mutate(AUC_entrena=unlist(lapply(modelo,Eval_entrena_mod_estudiof)))%>%
+  mutate(AUC_valida=unlist(lapply(modelo,Eval_valida_mod_estudiof)))
+
+modelos_estudiof<-modelos_estudiof%>%select(n.trees,interaction.depth,shrinkage,bag.fraction,AUC_entrena,AUC_valida)%>%arrange(desc(AUC_valida))
+modelos_estudiof
+
+@
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Mejor modelo
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Mejor modelo}
+
+Se utiliza el mejor modelo para cada variable para hacer las predicciones. Esto es: 
+\begin{itemize}
+\item Cocina: n.trees=1000, interaction.depth=3, shrinkage=0.1, bag.fraction=0.75
+\item Sala: n.trees=1000, interaction.depth=3, shrinkage=0.05, bag.fraction=0.5 
+\item Estudiof: n.trees=100, interaction.depth=3, shrinkage=0.1, bag.fraction=1
+\end{itemize}
+
+<<GBM_best_fit,cache=TRUE, tidy=TRUE>>=
+# Se obtiene la funcion gbm para el modelo de cocina
+gbm_best_cocina<-ajustar_boosting(datos_entrena_cocina,n_arboles=modelos_cocina$n.trees[1],interaccion=modelos_cocina$interaction.depth[1],tasa_ap=modelos_cocina$shrinkage[1],bag_frac=modelos_cocina$bag.fraction[1])
+
+# Se grafica el desempeño del modelo
+gbm.perf(gbm_best_cocina)
+
+# Se obtiene la funcion gbm para el modelo de sala
+gbm_best_sala<-ajustar_boosting(datos_entrena_sala,n_arboles=modelos_sala$n.trees[1],interaccion=modelos_sala$interaction.depth[1],tasa_ap=modelos_sala$shrinkage[1],bag_frac=modelos_sala$bag.fraction[1])
+
+# Se grafica el desempeño del modelo
+gbm.perf(gbm_best_sala)
+
+# Se obtiene la funcion gbm para el modelo de estudiof
+gbm_best_estudiof<-ajustar_boosting(datos_entrena_estudiof,n_arboles=modelos_estudiof$n.trees[1],interaccion=modelos_estudiof$interaction.depth[1],tasa_ap=modelos_estudiof$shrinkage[1],bag_frac=modelos_estudiof$bag.fraction[1])
+
+# Se grafica el desempeño del modelo
+gbm.perf(gbm_best_estudiof)
+
+@
+
+
+Posteriormente se calcula la medida AUC.
+<<GBM_best_AUC,cache=TRUE, tidy=TRUE>>=
+#%%%%%%%%%%%%%%%%%%%%%% Probabilidades %%%%%%%%%%%%%%%%%%%%%%
+# Nota el que subi a kaggle decía n.trees=100 para los tres en lugar del optimo de cada modelo. 
+# Se obtienen las probabilidades para sala
+probs_best_cocina<-predict.gbm(gbm_best_cocina,newdata=datos_entrena_cocina,n.trees=modelos_cocina$n.trees[1],type='response')
+probs_best_cocina_entrena<-probs_best_cocina[1:(indice-1)]
+probs_best_cocina_valida<-probs_best_cocina[indice:length(probs_best_cocina)]
+
+# Se obtienen las probabilidades para sala 
+probs_best_sala<-predict.gbm(gbm_best_sala,newdata=datos_entrena_sala,n.trees=modelos_sala$n.trees[1],type='response')
+probs_best_sala_entrena<-probs_best_sala[1:(indice-1)]
+probs_best_sala_valida<-probs_best_sala[indice:length(probs_best_sala)]
+
+# Se obtienen las probabilidades para estudiof
+probs_best_estudiof<-predict.gbm(gbm_best_estudiof,newdata=datos_entrena_estudiof,n.trees=modelos_estudiof$n.trees[1],type='response')
+probs_best_estudiof_entrena<-probs_best_estudiof[1:(indice-1)]
+probs_best_estudiof_valida<-probs_best_estudiof[indice:length(probs_best_estudiof)]
+
+#%%%%%%%%%%%%%%%%%%%%%% AUC Entrena  %%%%%%%%%%%%%%%%%%%%%%
+# Se calcula el AUC para el modelo de cocina. 
+pred_best_entrena_cocina<-prediction(probs_best_cocina_entrena,entrena$cocina_pir)
+AUC1_best_entrena_cocina<-performance(pred_best_entrena_cocina,measure='auc')@y.values
+AUC1_best_entrena_cocina
+
+# Se calcula el AUC para el modelo de sala. 
+pred_best_entrena_sala<-prediction(probs_best_sala_entrena,entrena$sala_pir)
+AUC1_best_entrena_sala<-performance(pred_best_entrena_sala,measure='auc')@y.values
+AUC1_best_entrena_sala
+
+# Se calcula el AUC para el modelo de estudiof. 
+pred_best_entrena_estudiof<-prediction(probs_best_estudiof_entrena,entrena$estudiof_pir)
+AUC1_best_entrena_estudiof<-performance(pred_best_entrena_estudiof,measure='auc')@y.values
+AUC1_best_entrena_estudiof
+
+# Evaluación del modelo 
+AUC1_best_entrena<-mean(c(as.numeric(AUC1_best_entrena_cocina),as.numeric(AUC1_best_entrena_sala),as.numeric(AUC1_best_entrena_estudiof)))
+AUC1_best_entrena
+
+#%%%%%%%%%%%%%%%%%%%%%% AUC Entrena  %%%%%%%%%%%%%%%%%%%%%%
+# Se calcula el AUC para el modelo de cocina. 
+pred_best_valida_cocina<-prediction(probs_best_cocina_valida,valida$cocina_pir)
+AUC1_best_valida_cocina<-performance(pred_best_valida_cocina,measure='auc')@y.values
+AUC1_best_valida_cocina
+
+# Se calcula el AUC para el modelo de sala. 
+pred_best_valida_sala<-prediction(probs_best_sala_valida,valida$sala_pir)
+AUC1_best_valida_sala<-performance(pred_best_valida_sala,measure='auc')@y.values
+AUC1_best_valida_sala
+
+# Se calcula el AUC para el modelo de estudiof. 
+pred_best_valida_estudiof<-prediction(probs_best_estudiof_valida,valida$estudiof_pir)
+AUC1_best_valida_estudiof<-performance(pred_best_valida_estudiof,measure='auc')@y.values
+AUC1_best_valida_estudiof
+
+AUC1_best_valida<-mean(c(as.numeric(AUC1_best_valida_cocina), as.numeric(AUC1_best_valida_sala), as.numeric(AUC1_best_valida_estudiof)))
+AUC1_best_valida
+
+@
+
+Se obtienen las predicciones del modelo para la muestra de prueba. 
+<<PredsPrueba_GBM_best,cache=TRUE, tidy=TRUE>>=
+
+# Se obtienen las probabilidades para cocina
+probs_best_cocina_prueba<-predict.gbm(gbm_best_cocina,newdata=datos_prueba%>%select(-id),n.trees=modelos_cocina$n.trees[1],type='response')
+
+# Se obtienen las probabilidades para sala
+probs_best_sala_prueba<-predict.gbm(gbm_best_sala,newdata=datos_prueba%>%select(-id),n.trees=modelos_sala$n.trees[1],type='response')
+
+# Se obtienen las probabilidades para estudiof
+probs_best_estudiof_prueba<-predict.gbm(gbm_best_estudiof,newdata=datos_prueba%>%select(-id),n.trees=modelos_estudiof$n.trees[1],type='response')
+
+preds_prueba_modbest<-data.frame(id=1:nrow(datos_prueba),cocina_pir=probs_best_cocina_prueba,sala_pir=probs_best_sala_prueba,estudiof_pir=probs_best_estudiof_prueba)
+rownames(preds_prueba_modbest)<-NULL
+
+write.csv(preds_prueba_modbest,"preds_prueba_modbest.csv",row.names=FALSE)
+@
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Menor Diferencia
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Modelo Menor Diferencia}
+
+Se utiliza el modelo que de la menor diferencia (en valor absoluto) entre el error de entrenamiento y el error de validación para cada variable para hacer las predicciones. Esto es: 
+\begin{itemize}
+\item Cocina: n.trees=1000, interaction.depth=2, shrinkage=0.001, bag.fraction=0.25
+\item Sala: n.trees=1000, interaction.depth=1, shrinkage=0.5, bag.fraction=0.25 
+\item Estudiof: n.trees=100, interaction.depth=3, shrinkage=0.01, bag.fraction=0.25
+\end{itemize}
+
+<<GBM_MinDif_fit,cache=TRUE, tidy=TRUE>>=
+# Se obtiene la funcion gbm para el modelo de cocina
+gbm_MinDif_cocina<-ajustar_boosting(datos_entrena_cocina,n_arboles=1000,interaccion=2,tasa_ap=0.001,bag_frac=0.25)
+
+# Se grafica el desempeño del modelo
+gbm.perf(gbm_MinDif_cocina)
+
+# Se obtiene la funcion gbm para el modelo de sala
+gbm_MinDif_sala<-ajustar_boosting(datos_entrena_sala,n_arboles=1000,interaccion=1,tasa_ap=0.1,bag_frac=0.25)
+
+# Se grafica el desempeño del modelo
+gbm.perf(gbm_MinDif_sala)
+
+# Se obtiene la funcion gbm para el modelo de estudiof
+gbm_MinDif_estudiof<-ajustar_boosting(datos_entrena_estudiof,n_arboles=100,interaccion=3,tasa_ap=0.01,bag_frac=0.25)
+
+# Se grafica el desempeño del modelo
+gbm.perf(gbm_MinDif_estudiof)
+
+@
+
+Posteriormente se calcula la medida AUC.
+<<GBM_MinDif_AUC,cache=TRUE, tidy=TRUE>>=
+#%%%%%%%%%%%%%%%%%%%%%% Probabilidades %%%%%%%%%%%%%%%%%%%%%%
+
+# Se obtienen las probabilidades para sala
+probs_MinDif_cocina<-predict.gbm(gbm_MinDif_cocina,newdata=datos_entrena_cocina,n.trees=1000,type='response')
+probs_MinDif_cocina_entrena<-probs_MinDif_cocina[1:(indice-1)]
+probs_MinDif_cocina_valida<-probs_MinDif_cocina[indice:length(probs_MinDif_cocina)]
+
+# Se obtienen las probabilidades para sala 
+probs_MinDif_sala<-predict.gbm(gbm_MinDif_sala,newdata=datos_entrena_sala,n.trees=1000,type='response')
+probs_MinDif_sala_entrena<-probs_MinDif_sala[1:(indice-1)]
+probs_MinDif_sala_valida<-probs_MinDif_sala[indice:length(probs_MinDif_sala)]
+
+# Se obtienen las probabilidades para estudiof
+probs_MinDif_estudiof<-predict.gbm(gbm_MinDif_estudiof,newdata=datos_entrena_estudiof,n.trees=100,type='response')
+probs_MinDif_estudiof_entrena<-probs_MinDif_estudiof[1:(indice-1)]
+probs_MinDif_estudiof_valida<-probs_MinDif_estudiof[indice:length(probs_MinDif_estudiof)]
+
+#%%%%%%%%%%%%%%%%%%%%%% AUC Entrena  %%%%%%%%%%%%%%%%%%%%%%
+# Se calcula el AUC para el modelo de cocina. 
+pred_MinDif_entrena_cocina<-prediction(probs_MinDif_cocina_entrena,entrena$cocina_pir)
+AUC1_MinDif_entrena_cocina<-performance(pred_MinDif_entrena_cocina,measure='auc')@y.values
+AUC1_MinDif_entrena_cocina
+
+# Se calcula el AUC para el modelo de sala. 
+pred_MinDif_entrena_sala<-prediction(probs_MinDif_sala_entrena,entrena$sala_pir)
+AUC1_MinDif_entrena_sala<-performance(pred_MinDif_entrena_sala,measure='auc')@y.values
+AUC1_MinDif_entrena_sala
+
+# Se calcula el AUC para el modelo de estudiof. 
+pred_MinDif_entrena_estudiof<-prediction(probs_MinDif_estudiof_entrena,entrena$estudiof_pir)
+AUC1_MinDif_entrena_estudiof<-performance(pred_MinDif_entrena_estudiof,measure='auc')@y.values
+AUC1_MinDif_entrena_estudiof
+
+# Evaluación del modelo 
+AUC1_MinDif_entrena<-mean(c(as.numeric(AUC1_MinDif_entrena_cocina),as.numeric(AUC1_MinDif_entrena_sala),as.numeric(AUC1_MinDif_entrena_estudiof)))
+AUC1_MinDif_entrena
+
+#%%%%%%%%%%%%%%%%%%%%%% AUC Entrena  %%%%%%%%%%%%%%%%%%%%%%
+# Se calcula el AUC para el modelo de cocina. 
+pred_MinDif_valida_cocina<-prediction(probs_MinDif_cocina_valida,valida$cocina_pir)
+AUC1_MinDif_valida_cocina<-performance(pred_MinDif_valida_cocina,measure='auc')@y.values
+AUC1_MinDif_valida_cocina
+
+# Se calcula el AUC para el modelo de sala. 
+pred_MinDif_valida_sala<-prediction(probs_MinDif_sala_valida,valida$sala_pir)
+AUC1_MinDif_valida_sala<-performance(pred_MinDif_valida_sala,measure='auc')@y.values
+AUC1_MinDif_valida_sala
+
+# Se calcula el AUC para el modelo de estudiof. 
+pred_MinDif_valida_estudiof<-prediction(probs_MinDif_estudiof_valida,valida$estudiof_pir)
+AUC1_MinDif_valida_estudiof<-performance(pred_MinDif_valida_estudiof,measure='auc')@y.values
+AUC1_MinDif_valida_estudiof
+
+AUC1_MinDif_valida<-mean(c(as.numeric(AUC1_MinDif_valida_cocina), as.numeric(AUC1_MinDif_valida_sala), as.numeric(AUC1_MinDif_valida_estudiof)))
+AUC1_MinDif_valida
+
+@
+
+Se obtienen las predicciones del modelo para la muestra de prueba. 
+<<PredsPrueba_GBM_MinDif,cache=TRUE, tidy=TRUE>>=
+
+# Se obtienen las probabilidades para cocina
+probs_MinDif_cocina_prueba<-predict.gbm(gbm_MinDif_cocina,newdata=datos_prueba%>%select(-id),n.trees=1000,type='response')
+
+# Se obtienen las probabilidades para sala
+probs_MinDif_sala_prueba<-predict.gbm(gbm_MinDif_sala,newdata=datos_prueba%>%select(-id),n.trees=1000,type='response')
+
+# Se obtienen las probabilidades para estudiof
+probs_MinDif_estudiof_prueba<-predict.gbm(gbm_MinDif_estudiof,newdata=datos_prueba%>%select(-id),n.trees=100,type='response')
+
+preds_prueba_modMinDif<-data.frame(id=1:nrow(datos_prueba),cocina_pir=probs_MinDif_cocina_prueba,sala_pir=probs_MinDif_sala_prueba,estudiof_pir=probs_MinDif_estudiof_prueba)
+rownames(preds_prueba_modMinDif)<-NULL
+
+write.csv(preds_prueba_modMinDif,"preds_prueba_modMinDif.csv",row.names=FALSE)
+@
+
+\end{document}
