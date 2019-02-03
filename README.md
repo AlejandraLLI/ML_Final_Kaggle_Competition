@@ -6,4 +6,6 @@ The objective is to predict motion events in three home areas: kitchen, study an
 
 This task was accomplished estimating GBM models for the three home areas in conjunction and independently. 
 
+Note that all coding and comments are in Spanish. There is no html or pdf output for the project, only the csv files submitted to the competition. 
+
 Link to Kaggle Competition: https://www.kaggle.com/c/motion-sensors-am2017
